@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: If you use Skill Framework, please cite it as below.
+title: Skill Framework
+abstract: >-
+  The framework for organizing, validating, and deploying AI agent skills
+  (SKILL.md, Agent Skills standard) at organizational scale.
+authors:
+  - family-names: Enns
+    given-names: Karson
+repository-code: https://github.com/karsonenns/skill-framework
+url: https://github.com/karsonenns/skill-framework
+license: MIT
+keywords:
+  - agent-skills
+  - ai-agents
+  - skills
+  - claude-code
+  - lint
+  - deploy

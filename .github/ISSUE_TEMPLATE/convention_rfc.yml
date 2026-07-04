@@ -1,0 +1,31 @@
+name: Convention RFC
+description: Propose a change to the skill tree convention (docs/convention.md)
+labels: [rfc]
+title: "RFC: "
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        The convention is an interface other people's CI depends on, so
+        changes go through an RFC issue before a PR.
+  - type: textarea
+    id: change
+    attributes:
+      label: Proposed change
+      description: What should the convention say, and what does it say today?
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: What real skill-tree problem does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: compat
+    attributes:
+      label: Compatibility
+      description: What happens to existing trees, lint rules, and deploys?
+    validations:
+      required: true

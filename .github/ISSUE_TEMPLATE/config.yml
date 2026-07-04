@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Agent Skills specification
+    url: https://agentskills.io/specification
+    about: The upstream SKILL.md format that Skill Framework builds on.
+  - name: Docs — the convention, lint rules, deploy targets, secrets
+    url: https://github.com/karsonenns/skill-framework/tree/main/docs
+    about: Check the docs before filing — the answer may already be there.

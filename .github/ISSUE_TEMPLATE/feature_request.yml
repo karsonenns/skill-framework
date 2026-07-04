@@ -1,0 +1,32 @@
+name: Feature request
+description: A new lint rule, deploy target, secret provider, or CLI capability
+labels: [enhancement]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Lint rule
+        - Deploy target
+        - Secret provider
+        - CLI / UX
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What goes wrong or is missing today, at what scale of skill tree?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: >-
+        For lint rules: what should be flagged, at what severity, and what is
+        the fix hint? For targets/providers: which runtime or scheme?
+    validations:
+      required: true

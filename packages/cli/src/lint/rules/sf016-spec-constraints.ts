@@ -69,7 +69,7 @@ export const sf016: Rule = {
       if (license !== undefined && typeof license !== 'string') {
         report(ctx, skill, 'license',
           '`license` must be a string (a license name or a bundled license file).',
-          'Write e.g. `license: Apache-2.0`.');
+          'Write e.g. `license: MIT`.');
       }
     }
   },

@@ -2,7 +2,8 @@
   "name": "skillfw",
   "version": "0.1.0",
   "description": "The framework for organizing, validating, and deploying AI agent skills at scale.",
-  "license": "Apache-2.0",
+  "license": "MIT",
+  "author": "Karson Enns <hello@karson.org>",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -25,14 +26,22 @@
   "bugs": "https://github.com/karsonenns/skill-framework/issues",
   "keywords": [
     "agent-skills",
+    "agentskills",
+    "skill-md",
     "skills",
     "ai-agents",
+    "agents",
+    "llm",
+    "claude",
     "claude-code",
     "codex",
     "gemini-cli",
     "cursor",
     "lint",
-    "deploy"
+    "linter",
+    "deploy",
+    "drift-detection",
+    "cli"
   ],
   "scripts": {
     "sync-archetypes": "node scripts/sync-archetypes.mjs",

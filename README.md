@@ -5,7 +5,7 @@
 
 [![CI](https://github.com/karsonenns/skill-framework/actions/workflows/ci.yml/badge.svg)](https://github.com/karsonenns/skill-framework/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/skillfw)](https://www.npmjs.com/package/skillfw)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ## The problem
 
@@ -162,4 +162,4 @@ open to RFCs.
 
 ## License
 
-[Apache-2.0](LICENSE)
+[MIT](LICENSE)
