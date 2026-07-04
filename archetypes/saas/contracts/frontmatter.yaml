@@ -1,0 +1,22 @@
+# Frontmatter contract — enforced by `sf lint` (SF003, SF004, SF015).
+required:
+  - name
+  - description
+  - version
+
+# Fields beyond this list trip SF015 (off by default; enable it in lint.yaml).
+allowed:
+  - name
+  - description
+  - version
+  - domain
+  - apis
+  - secrets
+  - uses
+  - allowed-tools
+  - license
+  - metadata
+  - compatibility
+
+patterns:
+  name: "^[a-z0-9]+(-[a-z0-9]+)*$"
