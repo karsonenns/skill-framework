@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/github-script@v8
+      - uses: actions/github-script@v9
         env:
           HAS_PAT: ${{ secrets.REPO_SETTINGS_TOKEN != '' }}
         with:
