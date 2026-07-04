@@ -1,0 +1,19 @@
+{
+  "description": "Organize, validate, and deploy AI agent skills (SKILL.md) at scale — lint rules, token budgets, secrets governance, and one-tree deploys to Claude Code, Codex, Gemini CLI, and Cursor.",
+  "homepage": "",
+  "topics": [
+    "agent-skills",
+    "ai-agents",
+    "skills",
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "cursor",
+    "llm",
+    "linter",
+    "cli",
+    "developer-tools",
+    "typescript"
+  ],
+  "private_vulnerability_reporting": true
+}

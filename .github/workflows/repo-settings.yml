@@ -1,0 +1,82 @@
+# Settings-as-code for the repo's About panel and security toggles.
+#
+# The default GITHUB_TOKEN cannot administer repository settings, so this
+# workflow needs a fine-grained personal access token stored as the
+# REPO_SETTINGS_TOKEN secret:
+#
+#   1. github.com -> Settings -> Developer settings -> Fine-grained tokens
+#      -> Generate new token, scoped to ONLY this repository, with
+#      "Administration: Read and write" permission.
+#   2. Repo -> Settings -> Secrets and variables -> Actions ->
+#      New repository secret named REPO_SETTINGS_TOKEN.
+#   3. Re-run this workflow from the Actions tab (or edit
+#      .github/repo-settings.json and push).
+#
+# Until the secret exists, runs skip with a warning instead of failing.
+name: Repo settings
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/repo-settings.json'
+      - '.github/workflows/repo-settings.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/github-script@v8
+        env:
+          HAS_PAT: ${{ secrets.REPO_SETTINGS_TOKEN != '' }}
+        with:
+          github-token: ${{ secrets.REPO_SETTINGS_TOKEN || github.token }}
+          script: |
+            if (process.env.HAS_PAT !== 'true') {
+              core.warning(
+                'REPO_SETTINGS_TOKEN secret is not set - skipping. ' +
+                'Add a fine-grained PAT with "Administration: Read and write" ' +
+                'scoped to this repo (see comments in this workflow file), ' +
+                'then re-run from the Actions tab.',
+              );
+              return;
+            }
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('.github/repo-settings.json', 'utf8'));
+            const { owner, repo } = context.repo;
+            try {
+              await github.rest.repos.update({
+                owner,
+                repo,
+                description: cfg.description,
+                homepage: cfg.homepage,
+              });
+              core.info('Updated description and homepage.');
+
+              await github.rest.repos.replaceAllTopics({ owner, repo, names: cfg.topics });
+              core.info(`Set ${cfg.topics.length} topics: ${cfg.topics.join(', ')}`);
+
+              if (cfg.private_vulnerability_reporting) {
+                await github.request(
+                  'PUT /repos/{owner}/{repo}/private-vulnerability-reporting',
+                  { owner, repo },
+                );
+                core.info('Enabled private vulnerability reporting.');
+              }
+              core.notice('Repository settings applied from .github/repo-settings.json');
+            } catch (err) {
+              if (err.status === 403 || err.status === 404) {
+                core.setFailed(
+                  `GitHub refused the settings update (${err.status}). ` +
+                  'The REPO_SETTINGS_TOKEN needs "Administration: Read and write" ' +
+                  'permission on this repository.',
+                );
+              } else {
+                throw err;
+              }
+            }
