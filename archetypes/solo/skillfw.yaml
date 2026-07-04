@@ -1,0 +1,16 @@
+# Skill Framework manifest — see docs/convention.md
+version: 1
+name: my-ops
+skills_dir: skills
+
+targets:
+  claude-code:
+    path: .claude/skills
+  cursor:
+    path: .cursor/skills
+
+secrets: {}
+
+budgets:
+  skill_tokens: 2000
+  tree_tokens: 60000
