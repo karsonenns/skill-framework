@@ -170,10 +170,12 @@ describe('loadTree', () => {
 });
 
 describe('contracts', () => {
-  it('falls back to defaults when files are absent', () => {
+  it('falls back to spec-only required fields when files are absent', () => {
     const dir = tmp();
     const contract = loadFrontmatterContract(dir);
-    expect(contract.required).toEqual(['name', 'description', 'version']);
+    // The Agent Skills spec requires only name and description; `version`
+    // is an sf-project convention enforced via scaffolded contracts.
+    expect(contract.required).toEqual(['name', 'description']);
     expect(loadLintConfig(dir).rules).toEqual({});
   });
   it('loads custom contract and lint config', () => {

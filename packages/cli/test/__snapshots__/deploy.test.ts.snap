@@ -1,10 +1,11 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`applyDeploy > strips sf-specific frontmatter into an HTML comment and keeps the standard fields 1`] = `
+exports[`applyDeploy > compiles frontmatter to pure Agent Skills spec fields 1`] = `
 "---
 name: invoice-dispute
 description: Resolve invoice disputes. Use when a customer contests a charge.
-version: 1.2.0
+metadata:
+  version: 1.2.0
 ---
 
 <!-- skillfw

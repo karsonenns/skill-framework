@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { existsSync, readFileSync, writeFileSync, statSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { planDeploy, applyDeploy, diffDeploy, checkSecrets } from '../src/deploy/engine.js';
+import { lintPath } from '../src/lint/engine.js';
 import { loadManifest } from '../src/core/manifest.js';
 import { loadTree } from '../src/core/tree.js';
 import { readLockfile } from '../src/core/lockfile.js';
@@ -48,6 +49,8 @@ Read the [playbook](references/playbook.md) and the
       content: '#!/bin/sh\necho fetch\n',
       mode: 0o755,
     },
+    'skills/domains/billing/invoice-dispute/assets/template.txt': 'Dear {customer},\n',
+    'skills/domains/billing/invoice-dispute/LICENSE.txt': 'Apache-2.0\n',
     'skills/domains/support/ticket-triage/SKILL.md': skillMd('ticket-triage'),
     'skills/orchestrators/escalation/SKILL.md': skillMd('escalation', {
       fmExtra: 'uses:\n  - invoice-dispute\n  - ticket-triage\n',
@@ -96,7 +99,7 @@ describe('applyDeploy', () => {
     }
   });
 
-  it('strips sf-specific frontmatter into an HTML comment and keeps the standard fields', () => {
+  it('compiles frontmatter to pure Agent Skills spec fields', () => {
     deployAll();
     const compiled = readFileSync(
       path.join(dir, '.claude/skills/invoice-dispute/SKILL.md'),
@@ -104,13 +107,29 @@ describe('applyDeploy', () => {
     );
     const fmBlock = compiled.split('---')[1]!;
     expect(fmBlock).toContain('name: invoice-dispute');
-    expect(fmBlock).toContain('version: 1.2.0');
+    // version is not a spec field: it moves under metadata (the spec's own
+    // pattern) and must not remain top-level.
+    expect(fmBlock).not.toMatch(/^version:/m);
+    expect(fmBlock).toMatch(/^metadata:\n {2}version: 1\.2\.0$/m);
     expect(fmBlock).not.toContain('apis');
     expect(fmBlock).not.toContain('secrets');
     expect(fmBlock).not.toContain('domain');
     expect(compiled).toContain('<!-- skillfw');
     expect(compiled).toContain('API_TOKEN');
     expect(compiled).toMatchSnapshot();
+  });
+
+  it('carries assets/ and any additional skill files', () => {
+    deployAll();
+    const base = path.join(dir, '.claude/skills/invoice-dispute');
+    expect(readFileSync(path.join(base, 'assets/template.txt'), 'utf8')).toContain('Dear');
+    expect(existsSync(path.join(base, 'LICENSE.txt'))).toBe(true);
+  });
+
+  it('produces compiled output that itself lints clean as a generic tree', () => {
+    deployAll();
+    const result = lintPath(path.join(dir, '.claude/skills'));
+    expect(result.findings).toEqual([]);
   });
 
   it('rewrites links so they resolve after flattening', () => {

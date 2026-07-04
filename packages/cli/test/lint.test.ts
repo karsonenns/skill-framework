@@ -55,9 +55,10 @@ describe('SF002 frontmatter parses', () => {
 });
 
 describe('SF003 required fields', () => {
-  it('flags a missing version', () => {
+  it('flags a missing version when the project contract requires it', () => {
     const dir = project(
       baseProject({
+        'contracts/frontmatter.yaml': 'required: [name, description, version]\n',
         'skills/domains/billing/no-version/SKILL.md':
           '---\nname: no-version\ndescription: Handle things. Use when asked to handle things.\n---\nbody\n',
       }),
@@ -65,6 +66,14 @@ describe('SF003 required fields', () => {
     const findings = lintPath(dir).findings.filter((f) => f.ruleId === 'SF003');
     expect(findings).toHaveLength(1);
     expect(findings[0]!.message).toContain('version');
+  });
+
+  it('does not require version on a bare spec-valid tree (generic mode)', () => {
+    const dir = project({
+      'minimal-skill/SKILL.md':
+        '---\nname: minimal-skill\ndescription: Extract text from PDFs. Use when handling PDF documents.\n---\n\n# Minimal\n\nSpec-minimal skill: name and description only.\n',
+    });
+    expect(lintPath(dir).findings).toEqual([]);
   });
 });
 
@@ -288,6 +297,86 @@ describe('SF014 executable scripts', () => {
     const applied = applySafeFixes(result, result.tree);
     expect(applied.some((a) => a.includes('chmod'))).toBe(true);
     expect(lintPath(dir).findings.some((f) => f.ruleId === 'SF014')).toBe(false);
+  });
+});
+
+describe('SF004 spec name length', () => {
+  it('flags names over 64 characters', () => {
+    const longName = `x${'-very-long-segment'.repeat(4)}`; // 73 chars, pattern-valid
+    const dir = project(
+      baseProject({ [`skills/domains/billing/${longName}/SKILL.md`]: skillMd(longName) }),
+    );
+    const f = lintPath(dir).findings.find(
+      (x) => x.ruleId === 'SF004' && x.message.includes('64'),
+    );
+    expect(f).toBeDefined();
+  });
+});
+
+describe('SF016 Agent Skills spec constraints', () => {
+  it('flags descriptions over 1024 characters', () => {
+    const dir = project(
+      baseProject({
+        'skills/domains/billing/wordy/SKILL.md': skillMd('wordy', {
+          description: `Use when asked. ${'Very long detail. '.repeat(70)}`,
+        }),
+      }),
+    );
+    const f = lintPath(dir).findings.find((x) => x.ruleId === 'SF016');
+    expect(f).toBeDefined();
+    expect(f!.severity).toBe('error');
+    expect(f!.message).toContain('1024');
+  });
+
+  it('flags compatibility over 500 characters or non-string', () => {
+    const dir = project(
+      baseProject({
+        'skills/domains/billing/compat/SKILL.md': skillMd('compat', {
+          fmExtra: `compatibility: ${'needs stuff '.repeat(50)}\n`,
+        }),
+      }),
+    );
+    expect(
+      lintPath(dir).findings.some((x) => x.ruleId === 'SF016' && x.message.includes('500')),
+    ).toBe(true);
+  });
+
+  it('flags non-string metadata values', () => {
+    const dir = project(
+      baseProject({
+        'skills/domains/billing/meta/SKILL.md': skillMd('meta', {
+          fmExtra: 'metadata:\n  author: acme\n  revision: 3\n',
+        }),
+      }),
+    );
+    const f = lintPath(dir).findings.find((x) => x.ruleId === 'SF016');
+    expect(f).toBeDefined();
+    expect(f!.message).toContain('revision');
+  });
+
+  it('flags allowed-tools written as a YAML list', () => {
+    const dir = project(
+      baseProject({
+        'skills/domains/billing/tools/SKILL.md': skillMd('tools', {
+          fmExtra: 'allowed-tools:\n  - Read\n  - Bash\n',
+        }),
+      }),
+    );
+    const f = lintPath(dir).findings.find((x) => x.ruleId === 'SF016');
+    expect(f).toBeDefined();
+    expect(f!.message).toContain('space-separated');
+  });
+
+  it('accepts spec-conformant optional fields', () => {
+    const dir = project(
+      baseProject({
+        'skills/domains/billing/conform/SKILL.md': skillMd('conform', {
+          fmExtra:
+            'license: Apache-2.0\ncompatibility: Requires git and network access\nmetadata:\n  author: acme\nallowed-tools: Bash(git:*) Read\n',
+        }),
+      }),
+    );
+    expect(ruleIds(dir)).not.toContain('SF016');
   });
 });
 

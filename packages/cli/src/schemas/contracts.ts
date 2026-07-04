@@ -3,7 +3,7 @@ import { z } from 'zod';
 /** contracts/frontmatter.yaml — required/allowed frontmatter fields + regexes. */
 export const frontmatterContractSchema = z
   .object({
-    required: z.array(z.string()).default(['name', 'description', 'version']),
+    required: z.array(z.string()).default(['name', 'description']),
     allowed: z.array(z.string()).nullish(),
     patterns: z.record(z.string(), z.string()).default({}),
   })
@@ -11,8 +11,12 @@ export const frontmatterContractSchema = z
 
 export type FrontmatterContract = z.infer<typeof frontmatterContractSchema>;
 
+// Default required fields match the Agent Skills spec exactly (name and
+// description) so `sf lint` on an arbitrary spec-valid tree has no false
+// errors. sf projects additionally require `version` via the
+// contracts/frontmatter.yaml that `sf init` scaffolds.
 export const DEFAULT_FRONTMATTER_CONTRACT: FrontmatterContract = {
-  required: ['name', 'description', 'version'],
+  required: ['name', 'description'],
   allowed: [
     'name',
     'description',

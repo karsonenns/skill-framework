@@ -79,8 +79,10 @@ Full spec: [docs/convention.md](docs/convention.md).
 
 ## Lint — the quality gate
 
-15 rules, each with an id, a rationale, and a fix hint
-([all documented](docs/lint-rules.md)). The ones that catch real fires:
+16 rules, each with an id, a rationale, and a fix hint
+([all documented](docs/lint-rules.md)) — including the Agent Skills spec
+constraints themselves (name/description/compatibility limits, field types),
+so a clean `sf lint` means spec-valid skills. The ones that catch real fires:
 
 | Rule | Catches |
 |---|---|
@@ -130,7 +132,7 @@ vendor's extensions.
 | | Raw skills folder | Marketplaces | Skill Framework |
 |---|---|---|---|
 | Layout convention for many skills | ✗ | ✗ | ✓ |
-| CI-enforceable quality gates | ✗ | ✗ | ✓ 15 lint rules |
+| CI-enforceable quality gates | ✗ | ✗ | ✓ 16 lint rules |
 | Token budgets | ✗ | ✗ | ✓ per-skill + per-tree |
 | Secrets governance | ✗ | ✗ | ✓ declared, verified, never embedded |
 | Multi-runtime deploy | copy-paste | per-runtime install | ✓ one tree → four runtimes |
@@ -143,7 +145,7 @@ anywhere can live in your tree.
 
 ## Roadmap
 
-- **v1 (now):** everything above — convention, 15 lint rules, four deploy
+- **v1 (now):** everything above — convention, 16 lint rules, four deploy
   targets, `env://`/`file://` secrets, lockfile + drift detection, GitHub
   Action.
 - **v1.x:** more secret providers (`op://`, `doppler://`), more deploy

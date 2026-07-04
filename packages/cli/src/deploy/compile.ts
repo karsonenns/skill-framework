@@ -8,7 +8,8 @@ import type { DeployTarget } from './targets/types.js';
 
 /** Frontmatter fields that are skillfw governance metadata, not part of the
  *  Agent Skills standard. Stripped into an HTML comment on deploy so nothing
- *  non-standard leaks into compiled frontmatter. */
+ *  non-standard leaks into compiled frontmatter. `version` is also not a spec
+ *  field — it is preserved as `metadata.version`, the spec's own pattern. */
 const SF_FIELDS = ['domain', 'apis', 'secrets', 'uses'] as const;
 
 /** Directory inside each target that holds shared org references. */
@@ -106,14 +107,13 @@ function compileSkill(
     executable: false,
   }));
 
-  for (const sub of ['references', 'scripts']) {
-    const dir = path.join(skill.dir, sub);
-    if (!existsSync(dir)) continue;
-    for (const abs of listFilesRecursive(dir)) {
-      const rel = toPosix(path.relative(skill.dir, abs));
-      const outPath = `${name}/${rel}`;
-      files.push(makeFile(outPath, abs, abs.endsWith('.md') ? rewriter : undefined, target));
-    }
+  // Carry everything else in the skill directory — references/, scripts/,
+  // assets/, and any additional files the spec allows.
+  for (const abs of listFilesRecursive(skill.dir)) {
+    if (abs === skill.skillMdPath) continue;
+    const rel = toPosix(path.relative(skill.dir, abs));
+    const outPath = `${name}/${rel}`;
+    files.push(makeFile(outPath, abs, abs.endsWith('.md') ? rewriter : undefined, target));
   }
 
   files.sort((a, b) => a.path.localeCompare(b.path));
@@ -153,7 +153,24 @@ export function transformSkillMd(skill: SkillEntry): string {
   const stripped: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(fm)) {
     if ((SF_FIELDS as readonly string[]).includes(key)) stripped[key] = value;
-    else kept[key] = value;
+    else if (key !== 'version') kept[key] = value;
+  }
+  // `version` is skillfw-required but not an Agent Skills spec field; the
+  // spec stores versions under `metadata`. Valid semver always round-trips
+  // as a YAML string (>= 2 dots), so no quoting is needed.
+  if (typeof fm.version === 'string' || typeof fm.version === 'number') {
+    const existing = kept['metadata'];
+    const metadata =
+      existing !== null && typeof existing === 'object' && !Array.isArray(existing)
+        ? { ...(existing as Record<string, unknown>) }
+        : {};
+    metadata['version'] = String(fm.version);
+    kept['metadata'] = metadata;
+  }
+  // The spec defines allowed-tools as a space-separated string; normalize
+  // lists in case SF016 was disabled.
+  if (Array.isArray(kept['allowed-tools'])) {
+    kept['allowed-tools'] = (kept['allowed-tools'] as unknown[]).map(String).join(' ');
   }
   const fmYaml = YAML.stringify(kept, { lineWidth: 0 }).trimEnd();
   let out = `---\n${fmYaml}\n---\n`;

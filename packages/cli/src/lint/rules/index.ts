@@ -14,8 +14,9 @@ import { sf012 } from './sf012-secrets-declared.js';
 import { sf013 } from './sf013-orchestrator-refs.js';
 import { sf014 } from './sf014-scripts-executable.js';
 import { sf015 } from './sf015-unknown-fields.js';
+import { sf016 } from './sf016-spec-constraints.js';
 
 export const ALL_RULES: Rule[] = [
   sf001, sf002, sf003, sf004, sf005, sf006, sf007, sf008,
-  sf009, sf010, sf011, sf012, sf013, sf014, sf015,
+  sf009, sf010, sf011, sf012, sf013, sf014, sf015, sf016,
 ];

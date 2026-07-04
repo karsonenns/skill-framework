@@ -25,6 +25,15 @@ export const sf004: Rule = {
           fix: `Rename to something like \`${suggestName(name)}\` in both frontmatter and folder name.`,
         });
       }
+      if (name.length > 64) {
+        ctx.report({
+          ruleId: 'SF004',
+          file,
+          line,
+          message: `Skill name is ${name.length} characters; the Agent Skills spec caps names at 64.`,
+          fix: 'Shorten the name (folder and frontmatter together).',
+        });
+      }
       if (name !== skill.folderName) {
         ctx.report({
           ruleId: 'SF004',

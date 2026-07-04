@@ -24,17 +24,22 @@ and writes nothing.
 For every target, identically in v1 (core SKILL.md is portable by design):
 
 1. **Flatten.** `skills/domains/*/<skill>/` and `skills/orchestrators/<skill>/`
-   both become `<path>/<skill-name>/`, carrying `references/` and `scripts/`
-   (execute bits preserved).
-2. **Strip sf metadata.** `domain`, `apis`, `secrets`, and `uses` are moved
-   out of frontmatter into an HTML comment below it, so nothing non-standard
-   leaks into the compiled frontmatter. `allowed-tools` passes through.
+   both become `<path>/<skill-name>/`, carrying everything in the skill
+   directory — `references/`, `scripts/` (execute bits preserved),
+   `assets/`, and any additional files, per the spec's directory structure.
+2. **Compile frontmatter to pure spec fields.** `domain`, `apis`, `secrets`,
+   and `uses` move out of frontmatter into an HTML comment below it, so
+   nothing non-standard leaks into the compiled frontmatter. `version` is
+   not a spec field either — it becomes `metadata.version`, the pattern the
+   spec itself shows. `allowed-tools`, `license`, `compatibility`, and
+   `metadata` pass through.
 
    ```markdown
    ---
    name: invoice-dispute
    description: …
-   version: 1.2.0
+   metadata:
+     version: 1.2.0
    ---
 
    <!-- skillfw
@@ -43,6 +48,9 @@ For every target, identically in v1 (core SKILL.md is portable by design):
      - STRIPE_KEY
    -->
    ```
+
+   The compiled tree is itself lint-clean: `sf lint .claude/skills` on
+   deploy output reports zero findings.
 
 3. **Copy shared references.** `skills/references/` becomes
    `<path>/_shared/references/`. Runtimes ignore the `_shared` directory

@@ -37,9 +37,15 @@ is that layer.
    frontmatter `name` (SF004). Names are unique across the whole tree (SF005)
    because deploy flattens every skill into one namespace.
 
-2. **Frontmatter.** Every SKILL.md carries YAML frontmatter with at minimum
-   `name`, `description`, and `version` (valid semver — SF003, SF006).
-   Optional fields:
+2. **Frontmatter.** Every SKILL.md carries YAML frontmatter that satisfies
+   the [Agent Skills spec](https://agentskills.io/specification): `name`
+   (≤64 chars, lowercase-hyphenated, equal to the folder name) and
+   `description` (≤1024 chars) are required; `license`, `compatibility`,
+   `metadata`, and `allowed-tools` (a space-separated string) follow the
+   spec's constraints (SF016). On top of the spec, sf projects require
+   `version` (valid semver — SF003, SF006); deploy compiles it to the
+   spec-standard `metadata.version` so compiled output stays pure spec.
+   Other sf fields:
    - `domain` — the owning domain (informational; stripped on deploy)
    - `apis` — first/third-party APIs the skill touches
    - `secrets` — secret keys the skill needs (must be declared in the

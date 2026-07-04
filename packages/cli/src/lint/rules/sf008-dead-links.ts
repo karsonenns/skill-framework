@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import type { Rule, LintContext } from '../types.js';
+import type { LintContext, Rule } from '../types.js';
 import { relFile, readTextFile, lineOf } from '../util.js';
 import { listFilesRecursive } from '../../core/tree.js';
 
@@ -15,12 +15,9 @@ export const sf008: Rule = {
     const seen = new Set<string>();
     for (const skill of ctx.tree.skills) {
       if (skill.skillMdPath) checkFile(ctx, skill.skillMdPath, seen);
-      for (const sub of ['references', 'scripts']) {
-        const dir = path.join(skill.dir, sub);
-        if (!existsSync(dir)) continue;
-        for (const f of listFilesRecursive(dir)) {
-          if (f.endsWith('.md')) checkFile(ctx, f, seen);
-        }
+      // Any .md anywhere in the skill dir (references/, assets/, extras).
+      for (const f of listFilesRecursive(skill.dir)) {
+        if (f.endsWith('.md')) checkFile(ctx, f, seen);
       }
     }
     for (const f of ctx.tree.sharedReferences) {

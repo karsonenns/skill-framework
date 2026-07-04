@@ -33,15 +33,20 @@ close with `---`.
 
 ## SF003 — Missing required field (error)
 
-`name`, `description`, and `version` are required (configurable via
-`contracts/frontmatter.yaml`).
+Required fields come from `contracts/frontmatter.yaml`. Outside a project
+(linting a bare directory of skills), the defaults match the Agent Skills
+spec exactly: `name` and `description`. Inside an sf project, the scaffolded
+contract additionally requires `version` — that is the sf convention, not a
+spec rule, and deploy compiles it to the spec-standard `metadata.version`.
 
 **Fix:** add the missing field.
 
-## SF004 — Name/folder mismatch or bad casing (error)
+## SF004 — Name/folder mismatch, bad casing, or over-length (error)
 
-The folder name must equal frontmatter `name`, and names must be
-lowercase-hyphenated (`^[a-z0-9]+(-[a-z0-9]+)*$` by default).
+The folder name must equal frontmatter `name`; names must be
+lowercase-hyphenated (`^[a-z0-9]+(-[a-z0-9]+)*$` by default — which also
+bans leading/trailing and consecutive hyphens, per the spec); and names must
+be at most 64 characters (spec limit).
 
 **Why:** deploy uses the name as the output folder; a mismatch means the
 deployed skill and the source disagree about identity.
@@ -85,6 +90,8 @@ or to another skill.
 ## SF009 — Skill over token budget (warn)
 
 Skill body exceeds `budgets.skill_tokens` (default 2000; estimated chars/4).
+The spec recommends staying under ~5000 tokens; sf's default is deliberately
+stricter and configurable.
 
 **Fix:** move detail into `references/` files, which load on demand.
 
@@ -135,3 +142,20 @@ A frontmatter field is not in the contract's `allowed` list. Enable with
 `rules: { SF015: warn }` in `contracts/lint.yaml`.
 
 **Why:** typo'd field names (`descriptoin:`) otherwise fail silently.
+
+## SF016 — Agent Skills spec constraint violated (error)
+
+Field constraints straight from the
+[specification](https://agentskills.io/specification):
+
+- `description` — at most 1024 characters
+- `compatibility` — a non-empty string, at most 500 characters
+- `metadata` — a mapping of string keys to **string** values
+  (`revision: 3` must be `revision: "3"`)
+- `allowed-tools` — a space-separated **string**
+  (`allowed-tools: Bash(git:*) Read`), not a YAML list
+- `license` — a string
+
+**Why:** these are the limits runtimes are entitled to enforce; a skill that
+breaks them may be rejected or silently truncated at load time.
+**Fix:** each finding says which field and which limit; adjust the field.
