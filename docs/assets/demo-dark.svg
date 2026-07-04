@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-label="Terminal session: npx skillfw init, sf lint, sf deploy --dry-run">
+  <style>
+    .cursor { animation: sfBlink 1.2s steps(1) infinite; }
+    @keyframes sfBlink { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
+    @media (prefers-reduced-motion: reduce) { .cursor { animation: none; opacity: .6 } }
+  </style>
+  <defs>
+    <clipPath id="win"><rect x="1" y="1" width="1198" height="558" rx="12"/></clipPath>
+  </defs>
+
+  <!-- window -->
+  <rect x="1" y="1" width="1198" height="558" rx="12" fill="#161b22"/>
+  <g clip-path="url(#win)">
+    <rect x="1" y="1" width="1198" height="46" fill="#1d232b"/>
+  </g>
+  <line x1="1" y1="47" x2="1199" y2="47" stroke="#2a313a" stroke-width="1"/>
+  <circle cx="28" cy="24" r="6.5" fill="#f0625e"/>
+  <circle cx="50" cy="24" r="6.5" fill="#f0b350"/>
+  <circle cx="72" cy="24" r="6.5" fill="#4fc57e"/>
+  <text x="600" y="29" text-anchor="middle" font-family="-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="14" fill="#8b949e">my-org — sf</text>
+  <rect x="1" y="1" width="1198" height="558" rx="12" fill="none" stroke="#30363d" stroke-width="1.5"/>
+
+  <!-- session -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22">
+    <text x="36" y="92"  fill="#8b949e">$ <tspan fill="#dee5ee">npx skillfw init</tspan></text>
+    <text x="36" y="122" fill="#35d7a5">&#10003; Scaffolded skill tree in /home/ops/my-org</text>
+
+    <text x="36" y="166" fill="#8b949e">$ <tspan fill="#dee5ee">sf lint</tspan></text>
+    <text x="36" y="196" fill="#35d7a5">&#10003; 3 skill(s), no problems</text>
+
+    <text x="36" y="240" fill="#8b949e">$ <tspan fill="#dee5ee">sf deploy --dry-run</tspan></text>
+    <text x="36" y="270" fill="#35d7a5">&#10003; 1 secret(s) resolve</text>
+
+    <text x="36" y="314" fill="#e6edf3" font-weight="600">Target claude-code (.claude/skills):</text>
+    <text x="62" y="344" fill="#35d7a5">+ b-212/SKILL.md</text>
+    <text x="62" y="374" fill="#35d7a5">+ extract-team-from-rooftop/SKILL.md</text>
+    <text x="62" y="404" fill="#35d7a5">+ rooftop-hoist/SKILL.md</text>
+    <text x="62" y="434" fill="#35d7a5">+ _shared/references/comms-brevity.md</text>
+    <text x="62" y="464" fill="#8b949e">&#8230; 3 more targets: codex, gemini-cli, cursor</text>
+
+    <text x="36" y="502" fill="#dee5ee">Plan: <tspan fill="#35d7a5">16 to add</tspan>, 0 to change, 0 to delete.</text>
+    <text x="36" y="532" fill="#8b949e">Dry run: nothing was written.</text>
+  </g>
+  <rect class="cursor" x="436" y="514" width="12" height="24" fill="#35d7a5"/>
+</svg>
