@@ -21,29 +21,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
-
-      - name: sf lint examples/acme-saas
-        run: node packages/cli/bin/sf.js lint examples/acme-saas
-
-      - name: sf lint both archetypes
-        run: |
-          node packages/cli/bin/sf.js lint archetypes/saas
-          node packages/cli/bin/sf.js lint archetypes/solo
-
-      - name: scaffold both archetypes and lint the result
+      - run: npm test # builds first; includes archetype lint + init/deploy e2e via the binary
+      - name: scaffold and lint round trip
         shell: bash
         run: |
-          for archetype in saas solo; do
-            dir="$(mktemp -d)"
-            node packages/cli/bin/sf.js init "--$archetype" "$dir"
-            node packages/cli/bin/sf.js lint "$dir"
-            rm -rf "$dir"
-          done
-
+          dir="$(mktemp -d)"
+          node packages/cli/bin/sf.js init "$dir"
+          node packages/cli/bin/sf.js lint "$dir"
       - name: pack tarball sanity check
         if: matrix.os == 'ubuntu-latest' && matrix.node == 22
-        run: |
-          cd packages/cli
-          npm pack --dry-run
+        run: cd packages/cli && npm pack --dry-run

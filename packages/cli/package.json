@@ -1,7 +1,7 @@
 {
   "name": "skillfw",
-  "version": "0.1.0",
-  "description": "The framework for organizing, validating, and deploying AI agent skills at scale.",
+  "version": "0.2.0",
+  "description": "Organize, validate, and deploy AI agent skills (SKILL.md) at scale.",
   "license": "MIT",
   "author": "Karson Enns <hello@karson.org>",
   "type": "module",
@@ -47,21 +47,14 @@
     "sync-archetypes": "node scripts/sync-archetypes.mjs",
     "build": "npm run sync-archetypes && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run sync-archetypes && vitest run",
-    "coverage": "npm run sync-archetypes && vitest run --coverage",
+    "test": "npm run build && tsc -p tsconfig.test.json && node --test .test-build/test/*.test.js",
     "prepack": "npm run build"
   },
   "dependencies": {
-    "commander": "^15.0.0",
-    "gray-matter": "^4.0.3",
-    "picocolors": "^1.1.1",
-    "yaml": "^2.6.1",
-    "zod": "^4.4.3"
+    "yaml": "^2.6.1"
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
-    "@vitest/coverage-v8": "^4.1.9",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "typescript": "^6.0.3"
   }
 }

@@ -1,43 +1,16 @@
 name: Bug report
-description: Something in sf lint, deploy, diff, init, or new misbehaves
+description: Something in sf misbehaves
 labels: [bug]
 body:
   - type: input
-    id: version
+    id: env
     attributes:
-      label: skillfw version
-      description: Output of `sf --version`
-      placeholder: 0.1.0
-    validations:
-      required: true
-  - type: input
-    id: environment
-    attributes:
-      label: OS and Node version
-      placeholder: macOS 15 / Node 22.12
-    validations:
-      required: true
+      label: skillfw version, OS, Node version
+      placeholder: 0.2.0 / macOS 15 / Node 22
+    validations: { required: true }
   - type: textarea
     id: repro
     attributes:
-      label: Steps to reproduce
-      description: >-
-        Ideally a minimal skill tree (or a snippet of SKILL.md + skillfw.yaml)
-        plus the exact command you ran.
-      placeholder: |
-        1. sf init --saas
-        2. sf lint
-        3. ...
-    validations:
-      required: true
-  - type: textarea
-    id: expected
-    attributes:
-      label: Expected vs actual behavior
-    validations:
-      required: true
-  - type: textarea
-    id: output
-    attributes:
-      label: Full command output
-      render: shell
+      label: Steps to reproduce, expected vs actual, and full output
+      description: Ideally a minimal SKILL.md + skillfw.yaml and the exact command.
+    validations: { required: true }

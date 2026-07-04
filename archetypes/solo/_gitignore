@@ -1,3 +1,0 @@
-# Secrets never enter git. skillfw resolves env:// from process env or .env.
-.env
-secrets/

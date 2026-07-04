@@ -1,0 +1,23 @@
+# Skill Framework manifest — see docs/convention.md
+version: 1
+name: my-org
+skills_dir: skills
+
+targets:
+  claude-code:
+    path: .claude/skills
+  codex:
+    path: .codex/skills
+  gemini-cli:
+    path: .gemini/skills
+  cursor:
+    path: .cursor/skills
+
+# Skills declare needs in frontmatter (`secrets: [FLIGHT_OPS_TOKEN]`); this
+# maps each key to a provider. Values are never written into compiled skills.
+secrets:
+  FLIGHT_OPS_TOKEN: env://FLIGHT_OPS_TOKEN
+
+budgets:
+  skill_tokens: 2000   # max tokens per SKILL.md body (chars/4)
+  tree_tokens: 60000   # max total across all descriptions

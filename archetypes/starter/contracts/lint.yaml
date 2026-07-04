@@ -1,0 +1,4 @@
+# Per-rule severity (error | warn | off) and budget overrides.
+# See docs/convention.md for every rule id.
+rules: {}
+budgets: {}
