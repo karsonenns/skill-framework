@@ -1,142 +1,125 @@
 # The Skill Framework convention
 
-This is the layout spec that `sf init` scaffolds and `sf lint` enforces. It is
-open to RFCs — propose changes via GitHub issues.
-
-The [Agent Skills standard](https://agentskills.io) defines a *single* skill
-folder: a `SKILL.md` with YAML frontmatter, plus optional resources. It says
-nothing about how 50–500 skills compose into an organization. This convention
-is that layer.
+The [Agent Skills spec](https://agentskills.io/specification) defines one
+skill folder. This convention defines how hundreds compose into an
+organization. It is enforced by `sf lint` and open to RFCs via issues.
 
 ## Layout
 
 ```
 <project-root>/
-├── skillfw.yaml              # manifest — targets, secrets, budgets
-├── skillfw.lock              # written by `sf deploy`; COMMIT it
+├── skillfw.yaml            # manifest: targets, secrets, budgets
+├── skillfw.lock            # written by `sf deploy`; commit it
 ├── skills/
-│   ├── domains/              # business capabilities — the NOUNS
-│   │   └── <domain>/         #   e.g. billing/, support/, legal/
-│   │       └── <skill>/      #   e.g. invoice-dispute/
-│   │           ├── SKILL.md  #   required; Agent Skills spec compliant
-│   │           ├── references/   # optional; loaded on demand
-│   │           └── scripts/      # optional; executable helpers
-│   ├── orchestrators/        # cross-domain workflows — the VERBS
-│   │   └── <workflow>/       #   e.g. month-end-close/
-│   │       └── SKILL.md      #   composes domain skills by name
-│   └── references/           # shared org knowledge (brand, tone, policies)
-│       └── *.md
+│   ├── domain/             # capability taxonomy, any depth — the NOUNS
+│   │   └── transportation/aviation/rotary-wing/b-212/
+│   │       ├── SKILL.md    #   a dir containing SKILL.md is a skill;
+│   │       ├── references/ #   dirs above it are taxonomy
+│   │       └── scripts/    #   (assets/ and any other files also carried)
+│   ├── outcome/            # end states the org must achieve — the VERBS
+│   │   └── extract-team-from-rooftop/SKILL.md
+│   └── references/         # shared org knowledge, linked never copied
 └── contracts/
-    ├── frontmatter.yaml      # required/allowed frontmatter fields + regexes
-    └── lint.yaml             # rule config: severities, budgets
+    ├── frontmatter.yaml    # required fields, allowed fields, patterns
+    └── lint.yaml           # rule severities, budget overrides
 ```
 
-## Rules
+**Domain skills** own one capability each; the taxonomy above them is pure
+organization. **Outcomes** compose domain skills by name in `uses:` and never
+duplicate their instructions — an outcome is achieved or aborted, not
+partially done.
 
-1. **Naming.** Skill folder names are lowercase-hyphenated and must equal the
-   frontmatter `name` (SF004). Names are unique across the whole tree (SF005)
-   because deploy flattens every skill into one namespace.
+## Frontmatter
 
-2. **Frontmatter.** Every SKILL.md carries YAML frontmatter that satisfies
-   the [Agent Skills spec](https://agentskills.io/specification): `name`
-   (≤64 chars, lowercase-hyphenated, equal to the folder name) and
-   `description` (≤1024 chars) are required; `license`, `compatibility`,
-   `metadata`, and `allowed-tools` (a space-separated string) follow the
-   spec's constraints (SF016). On top of the spec, sf projects require
-   `version` (valid semver — SF003, SF006); deploy compiles it to the
-   spec-standard `metadata.version` so compiled output stays pure spec.
-   Other sf fields:
-   - `domain` — the owning domain (informational; stripped on deploy)
-   - `apis` — first/third-party APIs the skill touches
-   - `secrets` — secret keys the skill needs (must be declared in the
-     manifest — SF012)
-   - `uses` — for orchestrators: the domain skills they compose (SF013)
-   - `allowed-tools` — passed through to runtimes that support it
+Spec fields first (validated by SF004/SF016): `name` (≤64 chars,
+lowercase-hyphenated, equals the folder name), `description` (≤1024 chars),
+optional `license`, `compatibility`, `metadata`, `allowed-tools`
+(space-separated string).
 
-3. **Domain skills own one capability.** If a skill description needs the
-   word "and" twice, it is probably two skills.
+sf projects add four classification fields, required by the scaffolded
+contract and compiled away on deploy:
 
-4. **Orchestrators compose, never duplicate.** An orchestrator lists the
-   domain skills it drives in `uses:` and references them by name in its
-   body. Procedure detail lives in the domain skill, once.
+| Field | Values | Meaning |
+|---|---|---|
+| `version` | semver | drives `sf diff` staleness |
+| `memory` | `knowledge` `perception` `procedure` `motor` `judgment` | what kind of competence this encodes |
+| `duration` | `session-only` `temporary` `reinforced` `permanent` | how long it should persist for the agent |
+| `uses` | skill names | outcomes only: the domain skills composed |
 
-5. **Shared knowledge lives in `skills/references/`.** Skills link to it with
-   relative paths (`../../../references/tone.md`). Lint verifies every link
-   resolves (SF008); deploy rewrites links so they still resolve after
-   flattening. No copy-pasting org context into individual skills.
+Plus governance hooks: `apis` (what it touches) and `secrets` (what it
+needs — every key must be mapped in the manifest, SF012).
 
-6. **Budgets are part of the contract.** `budgets.skill_tokens` caps each
-   SKILL.md body; `budgets.tree_tokens` caps the sum of all descriptions
-   (descriptions are the part every agent always loads). Estimates are
-   chars/4 — no LLM calls.
-
-## Manifest (`skillfw.yaml`)
-
-```yaml
-version: 1                      # manifest schema version
-name: acme-ops                  # tree name, lowercase-hyphenated
-skills_dir: skills              # default "skills"
-
-targets:                        # where `sf deploy` compiles to
-  claude-code:
-    path: .claude/skills        # relative to project root
-  codex:
-    path: .codex/skills
-  gemini-cli:
-    path: .gemini/skills
-  cursor:
-    path: .cursor/skills
-
-secrets:                        # referenced by skills via frontmatter `secrets:`
-  STRIPE_KEY: env://STRIPE_KEY          # process env / .env file
-  PARTNER_API: file://./secrets/pa.txt  # local file (0600 enforced)
-  # sf:// is reserved for Skill Framework Cloud and errors for now
-
-budgets:
-  skill_tokens: 2000            # max tokens per SKILL.md body (default)
-  tree_tokens: 60000            # max total across all descriptions (default)
-```
-
-`sf validate` checks the manifest alone; `sf lint` includes it.
-
-## Lockfile (`skillfw.lock`)
-
-Written on every deploy, and **committed** — it is the record of what was
-compiled where, used by `sf diff` for drift detection and by deploy to
-delete files it previously wrote that no longer exist in source.
+## Manifest
 
 ```yaml
 version: 1
-deployed_at: 2026-07-04T20:15:00.000Z
-targets:
-  claude-code:
-    path: .claude/skills
-    skills:
-      invoice-dispute:
-        version: 1.2.0
-        hash: sha256-…          # content hash of the compiled skill folder
-        files: [invoice-dispute/SKILL.md, …]
-    shared_files: [_shared/references/tone.md, …]
-```
-
-## Contracts
-
-`contracts/frontmatter.yaml` sets required fields, the allowed-field list
-(enforced by SF015 when enabled), and per-field regex patterns:
-
-```yaml
-required: [name, description, version]
-allowed: [name, description, version, domain, apis, secrets, uses, allowed-tools]
-patterns:
-  name: "^[a-z0-9]+(-[a-z0-9]+)*$"
-```
-
-`contracts/lint.yaml` tunes rule severities and budgets:
-
-```yaml
-rules:
-  SF007: error    # make description quality blocking
-  SF015: warn     # flag unknown frontmatter fields
+name: my-org
+skills_dir: skills            # default
+targets:                      # where `sf deploy` compiles to
+  claude-code: { path: .claude/skills }
+  codex:       { path: .codex/skills }
+  gemini-cli:  { path: .gemini/skills }
+  cursor:      { path: .cursor/skills }
+secrets:
+  STRIPE_KEY: env://STRIPE_KEY          # process env or .env
+  PARTNER_API: file://./secrets/pa.txt  # local file, 0600 enforced
+  # sf:// is reserved for a future cloud and errors today
 budgets:
-  skill_tokens: 1500
+  skill_tokens: 2000          # per SKILL.md body (chars/4 estimate)
+  tree_tokens: 60000          # sum of all descriptions — the always-loaded tax
 ```
+
+## Lint rules
+
+Exit 1 on any error. Severities configurable per rule in `contracts/lint.yaml`
+(`error | warn | off`). `--format json|github` for CI; `--fix` applies safe
+fixes only (chmod +x, name casing). Works on any directory of skills — on a
+bare tree, only the spec's own requirements apply (no false errors).
+
+| ID | Default | Catches |
+|---|---|---|
+| SF001 | error | SKILL.md missing, or misnamed (`skill.md`) — detected case-sensitively even on macOS |
+| SF002 | error | frontmatter missing or unparseable |
+| SF003 | error | required field missing (per contract) |
+| SF004 | error | name/folder mismatch, bad casing, >64 chars |
+| SF005 | error | duplicate skill names (deploy flattens to one namespace) |
+| SF006 | error | version not valid semver |
+| SF007 | warn | description too short or lacking trigger language (heuristic, no LLM) |
+| SF008 | error | dead relative link in any skill .md |
+| SF009 | warn | skill body over `budgets.skill_tokens` |
+| SF010 | warn | descriptions total over `budgets.tree_tokens` |
+| SF011 | error | hardcoded credential (AWS keys, `sk_live_…`, PEM, tokens, `password=`) |
+| SF012 | error | frontmatter secret not declared in the manifest |
+| SF013 | warn | outcome `uses:` a skill that doesn't exist |
+| SF014 | warn | script in scripts/ not executable |
+| SF015 | off | frontmatter field not in the contract's `allowed` list |
+| SF016 | error | Agent Skills spec limits: description ≤1024, compatibility ≤500, metadata string→string, allowed-tools a string |
+| SF017 | error | field violates a contract pattern — this is what enforces the `memory`/`duration` vocabularies |
+
+## Deploy, lockfile, drift
+
+`sf deploy` runs lint (errors abort), verifies every declared secret
+*resolves* (values are never read into output; `--dry-run` downgrades
+failures to warnings so you can always see the plan), then compiles each
+target:
+
+- Flattens every skill to `<target-path>/<name>/`, carrying references/,
+  scripts/ (exec bits kept), assets/, and any other files.
+- Compiled frontmatter is pure spec: `version` becomes `metadata.version`;
+  `memory`, `duration`, `apis`, `secrets`, `uses` move into an
+  `<!-- skillfw … -->` comment.
+- Rewrites relative links so they resolve after flattening; shared
+  references land in `_shared/` (ignored by runtimes — no SKILL.md).
+- `skillfw.lock` records every file written, per target, with a content
+  hash per skill. Deploy deletes only files it previously wrote; it never
+  touches files it didn't write. `--dry-run` prints the
+  create/update/delete plan Terraform-style.
+
+`sf diff` compares source, lockfile, and disk, and exits 1 on drift:
+`stale` (source changed), `modified in target` (compiled output edited),
+`missing in target`, `not deployed`, `removed from source`.
+
+**Extending:** a deploy target is one entry in the `TARGETS` table
+(`src/deploy.ts`); a secret provider is one case in `verifySecret`
+(`src/secrets.ts`); a lint rule is one object in `RULES` (`src/lint.ts`).
+Each new one needs a test and a row in the table above.

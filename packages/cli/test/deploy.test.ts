@@ -1,269 +1,178 @@
-import { describe, it, expect, afterEach, beforeEach } from 'vitest';
-import { existsSync, readFileSync, writeFileSync, statSync, rmSync } from 'node:fs';
+import { afterEach, beforeEach, describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { planDeploy, applyDeploy, diffDeploy, checkSecrets } from '../src/deploy/engine.js';
-import { lintPath } from '../src/lint/engine.js';
-import { loadManifest } from '../src/core/manifest.js';
-import { loadTree } from '../src/core/tree.js';
-import { readLockfile } from '../src/core/lockfile.js';
-import { makeTmpDir, cleanup, writeTree, skillMd, type TreeFiles } from './helpers.js';
+import { applyDeploy, checkSecrets, diffDeploy, planDeploy } from '../src/deploy.js';
+import { lintPath } from '../src/lint.js';
+import { loadManifest, readLockfile } from '../src/config.js';
+import { loadTree } from '../src/tree.js';
+import { verifySecret, parseDotenv } from '../src/secrets.js';
+import { makeTree, skillMd, CONTRACT } from './helpers.js';
 
-const MANIFEST = `version: 1
-name: acme-ops
-skills_dir: skills
+const FULL = {
+  'skillfw.yaml': `version: 1
+name: acme
 targets:
-  claude-code:
-    path: .claude/skills
-  cursor:
-    path: .cursor/skills
+  claude-code: { path: .claude/skills }
+  cursor: { path: .cursor/skills }
 secrets:
-  API_TOKEN: env://SFW_DEPLOY_TEST_TOKEN
-budgets:
-  skill_tokens: 2000
-  tree_tokens: 60000
-`;
-
-function fullProject(): TreeFiles {
-  return {
-    'skillfw.yaml': MANIFEST,
-    'skills/domains/billing/invoice-dispute/SKILL.md': `---
-name: invoice-dispute
-description: Resolve invoice disputes. Use when a customer contests a charge.
+  API_TOKEN: env://SFW_TEST_TOKEN
+`,
+  'contracts/frontmatter.yaml': CONTRACT,
+  'skills/domain/transportation/aviation/rotary-wing/b-212/SKILL.md': `---
+name: b-212
+description: Operate the B-212. Use when rotary-wing flight is required.
 version: 1.2.0
-domain: billing
-apis:
-  - stripe
-secrets:
-  - API_TOKEN
+memory: motor
+duration: permanent
+apis: [flight-ops]
+secrets: [API_TOKEN]
 ---
 
-# Invoice Dispute
+# B-212
 
-Read the [playbook](references/playbook.md) and the
-[tone guide](../../../references/tone.md), then also check
-[ticket triage](../../support/ticket-triage/SKILL.md).
+See [checklist](references/checklist.md), the shared
+[brevity guide](../../../../../references/brevity.md), and
+[hoist](../../../../operations/recovery/hoist/SKILL.md).
 `,
-    'skills/domains/billing/invoice-dispute/references/playbook.md':
-      'Shared [tone guide](../../../../references/tone.md).\n',
-    'skills/domains/billing/invoice-dispute/scripts/fetch.sh': {
-      content: '#!/bin/sh\necho fetch\n',
-      mode: 0o755,
-    },
-    'skills/domains/billing/invoice-dispute/assets/template.txt': 'Dear {customer},\n',
-    'skills/domains/billing/invoice-dispute/LICENSE.txt': 'Apache-2.0\n',
-    'skills/domains/support/ticket-triage/SKILL.md': skillMd('ticket-triage'),
-    'skills/orchestrators/escalation/SKILL.md': skillMd('escalation', {
-      fmExtra: 'uses:\n  - invoice-dispute\n  - ticket-triage\n',
-    }),
-    'skills/references/tone.md': '# Tone\n',
-  };
-}
+  'skills/domain/transportation/aviation/rotary-wing/b-212/references/checklist.md':
+    'Shared [brevity](../../../../../../references/brevity.md).\n',
+  'skills/domain/transportation/aviation/rotary-wing/b-212/assets/loadout.txt': 'strop x2\n',
+  'skills/domain/transportation/aviation/rotary-wing/b-212/scripts/notam.sh': {
+    content: '#!/bin/sh\necho ok\n', mode: 0o755,
+  },
+  'skills/domain/operations/recovery/hoist/SKILL.md': skillMd('hoist'),
+  'skills/outcome/extract-team/SKILL.md': skillMd('extract-team', { memory: 'judgment', uses: '[b-212, hoist]' }),
+  'skills/references/brevity.md': '# Brevity\n',
+};
 
 let dir: string;
 beforeEach(() => {
-  dir = makeTmpDir();
-  writeTree(dir, fullProject());
-  process.env['SFW_DEPLOY_TEST_TOKEN'] = 'tok';
+  dir = makeTree(FULL);
+  process.env['SFW_TEST_TOKEN'] = 'tok';
 });
-afterEach(() => {
-  cleanup(dir);
-  delete process.env['SFW_DEPLOY_TEST_TOKEN'];
-});
+afterEach(() => delete process.env['SFW_TEST_TOKEN']);
 
 function deployAll(): void {
   const plan = planDeploy(dir, []);
-  expect(plan.lint.errorCount).toBe(0);
+  assert.equal(plan.lint.errorCount, 0);
   applyDeploy(plan, '2026-07-04T00:00:00.000Z');
 }
 
-describe('planDeploy', () => {
-  it('plans creates for a fresh target', () => {
-    const plan = planDeploy(dir, ['claude-code']);
-    expect(plan.targets).toHaveLength(1);
-    const files = plan.targets[0]!.entries;
-    expect(files.every((e) => e.action === 'create')).toBe(true);
-    expect(files.map((e) => e.file)).toContain('invoice-dispute/SKILL.md');
-    expect(files.map((e) => e.file)).toContain('_shared/references/tone.md');
+describe('deploy', () => {
+  it('plans creates for a fresh target and rejects unknown targets', () => {
+    const files = planDeploy(dir, ['claude-code']).targets[0]!.entries;
+    assert.ok(files.every((e) => e.action === 'create'));
+    assert.ok(files.map((e) => e.file).includes('_shared/references/brevity.md'));
+    assert.throws(() => planDeploy(dir, ['bogus']), /claude-code/);
   });
-  it('rejects unknown targets with configured list', () => {
-    expect(() => planDeploy(dir, ['bogus'])).toThrow(/claude-code/);
-  });
-});
 
-describe('applyDeploy', () => {
-  it('flattens domains and orchestrators into the target', () => {
+  it('flattens deep taxonomy into pure-spec skills, carrying every file', () => {
     deployAll();
-    for (const skill of ['invoice-dispute', 'ticket-triage', 'escalation']) {
-      expect(existsSync(path.join(dir, '.claude/skills', skill, 'SKILL.md'))).toBe(true);
-      expect(existsSync(path.join(dir, '.cursor/skills', skill, 'SKILL.md'))).toBe(true);
+    const base = path.join(dir, '.claude/skills');
+    for (const skill of ['b-212', 'hoist', 'extract-team']) {
+      assert.ok(existsSync(path.join(base, skill, 'SKILL.md')), skill);
     }
+    const compiled = readFileSync(path.join(base, 'b-212/SKILL.md'), 'utf8');
+    const fm = compiled.split('---')[1]!;
+    // version -> metadata.version (spec pattern); sf fields -> comment.
+    assert.ok(!/^version:|memory|duration|apis|secrets/m.test(fm));
+    assert.match(fm, /^metadata:\n {2}version: 1\.2\.0$/m);
+    assert.ok(compiled.includes('<!-- skillfw'));
+    assert.ok(compiled.includes('API_TOKEN'));
+    // links rewritten to resolve after flattening
+    assert.ok(compiled.includes('(./references/checklist.md)'));
+    assert.ok(compiled.includes('(../_shared/references/brevity.md)'));
+    assert.ok(compiled.includes('(../hoist/SKILL.md)'));
+    assert.ok(readFileSync(path.join(base, 'b-212/references/checklist.md'), 'utf8')
+      .includes('(../../_shared/references/brevity.md)'));
+    // assets and scripts carried; exec bit preserved
+    assert.ok(existsSync(path.join(base, 'b-212/assets/loadout.txt')));
+    if (process.platform !== 'win32') {
+      assert.notEqual(statSync(path.join(base, 'b-212/scripts/notam.sh')).mode & 0o111, 0);
+    }
+    // the compiled output itself lints clean as a generic tree
+    assert.deepEqual(lintPath(base).findings, []);
   });
 
-  it('compiles frontmatter to pure Agent Skills spec fields', () => {
+  it('is idempotent, tracks files in the lockfile, and deletes only what it wrote', () => {
     deployAll();
-    const compiled = readFileSync(
-      path.join(dir, '.claude/skills/invoice-dispute/SKILL.md'),
-      'utf8',
-    );
-    const fmBlock = compiled.split('---')[1]!;
-    expect(fmBlock).toContain('name: invoice-dispute');
-    // version is not a spec field: it moves under metadata (the spec's own
-    // pattern) and must not remain top-level.
-    expect(fmBlock).not.toMatch(/^version:/m);
-    expect(fmBlock).toMatch(/^metadata:\n {2}version: 1\.2\.0$/m);
-    expect(fmBlock).not.toContain('apis');
-    expect(fmBlock).not.toContain('secrets');
-    expect(fmBlock).not.toContain('domain');
-    expect(compiled).toContain('<!-- skillfw');
-    expect(compiled).toContain('API_TOKEN');
-    expect(compiled).toMatchSnapshot();
-  });
-
-  it('carries assets/ and any additional skill files', () => {
-    deployAll();
-    const base = path.join(dir, '.claude/skills/invoice-dispute');
-    expect(readFileSync(path.join(base, 'assets/template.txt'), 'utf8')).toContain('Dear');
-    expect(existsSync(path.join(base, 'LICENSE.txt'))).toBe(true);
-  });
-
-  it('produces compiled output that itself lints clean as a generic tree', () => {
-    deployAll();
-    const result = lintPath(path.join(dir, '.claude/skills'));
-    expect(result.findings).toEqual([]);
-  });
-
-  it('rewrites links so they resolve after flattening', () => {
-    deployAll();
-    const root = path.join(dir, '.claude/skills');
-    const compiled = readFileSync(path.join(root, 'invoice-dispute/SKILL.md'), 'utf8');
-    // own references keep their shape (normalized with ./)
-    expect(compiled).toContain('(./references/playbook.md)');
-    // shared references remap to _shared
-    expect(compiled).toContain('(../_shared/references/tone.md)');
-    // cross-skill links remap to the flattened sibling
-    expect(compiled).toContain('(../ticket-triage/SKILL.md)');
-    // and a reference file one level deeper remaps correctly too
-    const ref = readFileSync(path.join(root, 'invoice-dispute/references/playbook.md'), 'utf8');
-    expect(ref).toContain('(../../_shared/references/tone.md)');
-    // every rewritten path actually exists on disk
-    expect(existsSync(path.join(root, '_shared/references/tone.md'))).toBe(true);
-    expect(existsSync(path.join(root, 'ticket-triage/SKILL.md'))).toBe(true);
-  });
-
-  it.skipIf(process.platform === 'win32')('preserves script executability', () => {
-    deployAll();
-    const mode = statSync(path.join(dir, '.claude/skills/invoice-dispute/scripts/fetch.sh')).mode;
-    expect(mode & 0o111).not.toBe(0);
-  });
-
-  it('writes a lockfile with versions, hashes, and tracked files', () => {
-    deployAll();
+    assert.deepEqual(planDeploy(dir, []).targets.flatMap((t) => t.entries), []);
     const lock = readLockfile(dir)!;
-    expect(lock.version).toBe(1);
-    const skill = lock.targets['claude-code']!.skills['invoice-dispute']!;
-    expect(skill.version).toBe('1.2.0');
-    expect(skill.hash).toMatch(/^sha256-/);
-    expect(skill.files).toContain('invoice-dispute/SKILL.md');
-  });
+    assert.equal(lock.targets['claude-code']!.skills['b-212']!.version, '1.2.0');
+    assert.match(lock.targets['claude-code']!.skills['b-212']!.hash, /^sha256-/);
 
-  it('is idempotent — second deploy plans zero changes', () => {
-    deployAll();
-    const plan = planDeploy(dir, []);
-    expect(plan.targets.flatMap((t) => t.entries)).toEqual([]);
-  });
-
-  it('deletes files it wrote for skills removed from source, and only those', () => {
-    deployAll();
-    // an untracked file the user created inside the target
     const foreign = path.join(dir, '.claude/skills/hand-made.md');
     writeFileSync(foreign, 'mine\n');
-    rmSync(path.join(dir, 'skills/orchestrators/escalation'), { recursive: true });
+    rmSync(path.join(dir, 'skills/outcome/extract-team'), { recursive: true });
     const plan = planDeploy(dir, []);
-    expect(plan.lint.errorCount).toBe(0);
-    const deletes = plan.targets[0]!.entries.filter((e) => e.action === 'delete');
-    expect(deletes.map((e) => e.file)).toContain('escalation/SKILL.md');
+    assert.equal(plan.lint.errorCount, 0);
+    assert.ok(plan.targets[0]!.entries.filter((e) => e.action === 'delete').map((e) => e.file)
+      .includes('extract-team/SKILL.md'));
     applyDeploy(plan, '2026-07-04T01:00:00.000Z');
-    expect(existsSync(path.join(dir, '.claude/skills/escalation'))).toBe(false);
-    expect(existsSync(foreign)).toBe(true);
-    const lock = readLockfile(dir)!;
-    expect(lock.targets['claude-code']!.skills['escalation']).toBeUndefined();
+    assert.ok(!existsSync(path.join(dir, '.claude/skills/extract-team')));
+    assert.ok(existsSync(foreign));
+    assert.equal(readLockfile(dir)!.targets['claude-code']!.skills['extract-team'], undefined);
+  });
+
+  it('lint errors surface in the plan (deploy gate)', () => {
+    writeFileSync(
+      path.join(dir, 'skills/domain/operations/recovery/hoist/SKILL.md'),
+      skillMd('hoist', { version: 'nope' }),
+    );
+    assert.ok(planDeploy(dir, []).lint.errorCount > 0);
   });
 });
 
-describe('checkSecrets', () => {
-  it('maps secrets to the skills that use them', () => {
-    const manifest = loadManifest(dir);
-    const tree = loadTree(dir);
-    const checks = checkSecrets(dir, manifest, tree);
-    expect(checks).toHaveLength(1);
-    expect(checks[0]!.key).toBe('API_TOKEN');
-    expect(checks[0]!.usedBy).toEqual(['invoice-dispute']);
-    expect(checks[0]!.ok).toBe(true);
+describe('diff', () => {
+  it('reports stale, modified-in-target, missing, not-deployed, removed-from-source', () => {
+    deployAll();
+    assert.deepEqual(diffDeploy(dir).drift, []);
+
+    const src = path.join(dir, 'skills/domain/operations/recovery/hoist/SKILL.md');
+    writeFileSync(src, readFileSync(src, 'utf8').replace('0.1.0', '0.2.0'));
+    const compiled = path.join(dir, '.claude/skills/extract-team/SKILL.md');
+    writeFileSync(compiled, `${readFileSync(compiled, 'utf8')}\nEDITED\n`);
+    rmSync(path.join(dir, '.cursor/skills/hoist'), { recursive: true });
+    mkdirSync(path.join(dir, 'skills/domain/ops2/new-one'), { recursive: true });
+    writeFileSync(path.join(dir, 'skills/domain/ops2/new-one/SKILL.md'), skillMd('new-one'));
+
+    const kinds = new Set(diffDeploy(dir).drift.map((d) => `${d.kind}:${d.skill}`));
+    for (const expected of ['stale:hoist', 'modified-in-target:extract-team', 'missing-in-target:hoist', 'not-deployed:new-one']) {
+      assert.ok(kinds.has(expected), expected);
+    }
+
+    rmSync(path.join(dir, 'skills/outcome/extract-team'), { recursive: true });
+    assert.ok(diffDeploy(dir).drift.some((d) => d.kind === 'removed-from-source' && d.skill === 'extract-team'));
   });
-  it('fails loudly when a secret cannot resolve', () => {
-    delete process.env['SFW_DEPLOY_TEST_TOKEN'];
+});
+
+describe('secrets', () => {
+  it('checkSecrets maps usage and verifies resolvability', () => {
     const checks = checkSecrets(dir, loadManifest(dir), loadTree(dir));
-    expect(checks[0]!.ok).toBe(false);
-    expect(checks[0]!.reason).toContain('SFW_DEPLOY_TEST_TOKEN');
-  });
-});
-
-describe('diffDeploy', () => {
-  it('reports no drift right after a deploy', () => {
-    deployAll();
-    expect(diffDeploy(dir).drift).toEqual([]);
+    assert.equal(checks.length, 1);
+    assert.equal(checks[0]!.key, 'API_TOKEN');
+    assert.deepEqual(checks[0]!.usedBy, ['b-212']);
+    assert.equal(checks[0]!.ok, true);
+    delete process.env['SFW_TEST_TOKEN'];
+    assert.match(checkSecrets(dir, loadManifest(dir), loadTree(dir))[0]!.reason!, /SFW_TEST_TOKEN/);
   });
 
-  it('detects stale skills when source changes', () => {
-    deployAll();
-    const src = path.join(dir, 'skills/domains/support/ticket-triage/SKILL.md');
-    writeFileSync(src, readFileSync(src, 'utf8').replace('version: 0.1.0', 'version: 0.2.0'));
-    const { drift } = diffDeploy(dir);
-    const stale = drift.filter((d) => d.kind === 'stale' && d.skill === 'ticket-triage');
-    expect(stale).toHaveLength(2); // both targets
-    expect(stale[0]!.detail).toContain('0.2.0');
-  });
-
-  it('detects direct edits in the target', () => {
-    deployAll();
-    const compiled = path.join(dir, '.claude/skills/ticket-triage/SKILL.md');
-    writeFileSync(compiled, readFileSync(compiled, 'utf8') + '\nEDITED IN TARGET\n');
-    const { drift } = diffDeploy(dir);
-    expect(
-      drift.some((d) => d.kind === 'modified-in-target' && d.targetName === 'claude-code'),
-    ).toBe(true);
-  });
-
-  it('detects missing files in the target', () => {
-    deployAll();
-    rmSync(path.join(dir, '.claude/skills/ticket-triage'), { recursive: true });
-    const { drift } = diffDeploy(dir);
-    expect(
-      drift.some((d) => d.kind === 'missing-in-target' && d.skill === 'ticket-triage'),
-    ).toBe(true);
-  });
-
-  it('detects never-deployed and removed-from-source skills', () => {
-    deployAll();
-    writeTree(dir, {
-      'skills/domains/billing/brand-new/SKILL.md': skillMd('brand-new'),
+  it('env:// falls back to .env; file:// enforces 0600; sf:// is reserved', () => {
+    const root = makeTree({
+      '.env': 'FROM_DOTENV="quoted"\n# comment\n',
+      'tight.txt': { content: 'shh', mode: 0o600 },
+      'loose.txt': { content: 'shh', mode: 0o644 },
     });
-    rmSync(path.join(dir, 'skills/orchestrators/escalation'), { recursive: true });
-    const { drift } = diffDeploy(dir);
-    expect(drift.some((d) => d.kind === 'not-deployed' && d.skill === 'brand-new')).toBe(true);
-    expect(
-      drift.some((d) => d.kind === 'removed-from-source' && d.skill === 'escalation'),
-    ).toBe(true);
-  });
-});
-
-describe('deploy gate', () => {
-  it('does not modify permissions expectations: lint errors abort planning consumers', () => {
-    // Break the tree: duplicate name (error severity).
-    writeTree(dir, {
-      'skills/domains/support/invoice-dispute/SKILL.md': skillMd('invoice-dispute'),
-    });
-    const plan = planDeploy(dir, []);
-    expect(plan.lint.errorCount).toBeGreaterThan(0);
+    assert.equal(verifySecret('env://FROM_DOTENV', root).ok, true);
+    assert.match(verifySecret('env://MISSING_VAR', root).reason!, /\.env/);
+    if (process.platform !== 'win32') {
+      assert.equal(verifySecret('file://./tight.txt', root).ok, true);
+      assert.match(verifySecret('file://./loose.txt', root).reason!, /chmod 600/);
+    }
+    assert.match(verifySecret('sf://org/key', root).reason!, /Skill Framework Cloud/);
+    assert.match(verifySecret('vault://x', root).reason!, /env:\/\//);
+    assert.equal(verifySecret('notauri', root).ok, false);
+    assert.deepEqual(parseDotenv(path.join(root, '.env')), { FROM_DOTENV: 'quoted' });
   });
 });

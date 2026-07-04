@@ -1,0 +1,10 @@
+# Frontmatter contract — enforced by sf lint (SF003, SF004, SF015, SF017).
+required: [name, description, version, memory, duration]
+
+allowed: [name, description, version, memory, duration, apis, secrets, uses,
+          allowed-tools, license, metadata, compatibility]
+
+patterns:
+  name: "^[a-z0-9]+(-[a-z0-9]+)*$"
+  memory: "^(knowledge|perception|procedure|motor|judgment)$"
+  duration: "^(session-only|temporary|reinforced|permanent)$"

@@ -1,4 +1,0 @@
-# Lint configuration — per-rule severity (error | warn | off) and budget
-# overrides. See docs/lint-rules.md for every rule id.
-rules: {}
-budgets: {}

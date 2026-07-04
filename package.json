@@ -12,7 +12,6 @@
   "scripts": {
     "build": "npm run build -w skillfw",
     "typecheck": "npm run typecheck -w skillfw",
-    "test": "npm run test -w skillfw",
-    "coverage": "npm run coverage -w skillfw"
+    "test": "npm run test -w skillfw"
   }
 }

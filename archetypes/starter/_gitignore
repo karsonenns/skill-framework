@@ -1,0 +1,3 @@
+# Secrets never enter git; env:// resolves from process env or .env.
+.env
+secrets/
