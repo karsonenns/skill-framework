@@ -1,0 +1,24 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`applyDeploy > strips sf-specific frontmatter into an HTML comment and keeps the standard fields 1`] = `
+"---
+name: invoice-dispute
+description: Resolve invoice disputes. Use when a customer contests a charge.
+version: 1.2.0
+---
+
+<!-- skillfw
+domain: billing
+apis:
+  - stripe
+secrets:
+  - API_TOKEN
+-->
+
+# Invoice Dispute
+
+Read the [playbook](./references/playbook.md) and the
+[tone guide](../_shared/references/tone.md), then also check
+[ticket triage](../ticket-triage/SKILL.md).
+"
+`;
