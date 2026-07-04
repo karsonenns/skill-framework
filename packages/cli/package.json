@@ -1,0 +1,58 @@
+{
+  "name": "skillfw",
+  "version": "0.1.0",
+  "description": "The framework for organizing, validating, and deploying AI agent skills at scale.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "sf": "./bin/sf.js",
+    "skillfw": "./bin/sf.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "archetypes"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/karsonenns/skill-framework.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/karsonenns/skill-framework#readme",
+  "bugs": "https://github.com/karsonenns/skill-framework/issues",
+  "keywords": [
+    "agent-skills",
+    "skills",
+    "ai-agents",
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "cursor",
+    "lint",
+    "deploy"
+  ],
+  "scripts": {
+    "sync-archetypes": "node scripts/sync-archetypes.mjs",
+    "build": "npm run sync-archetypes && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run sync-archetypes && vitest run",
+    "coverage": "npm run sync-archetypes && vitest run --coverage",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "gray-matter": "^4.0.3",
+    "picocolors": "^1.1.1",
+    "yaml": "^2.6.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "@vitest/coverage-v8": "^2.1.8",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

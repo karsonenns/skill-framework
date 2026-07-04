@@ -1,0 +1,17 @@
+{
+  "name": "skill-framework-monorepo",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w skillfw",
+    "typecheck": "npm run typecheck -w skillfw",
+    "test": "npm run test -w skillfw",
+    "coverage": "npm run coverage -w skillfw"
+  }
+}
