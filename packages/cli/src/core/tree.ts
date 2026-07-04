@@ -73,7 +73,7 @@ function loadGenericTree(root: string): SkillTree {
 }
 
 function walk(dir: string, root: string, out: SkillEntry[]): void {
-  const hasSkillMd = existsSync(path.join(dir, SKILL_MD));
+  const hasSkillMd = hasExactSkillMd(dir);
   const misnamed = findMisnamed(dir);
   if (hasSkillMd || misnamed.length > 0) {
     const entry = loadSkillDir(dir, root, 'flat');
@@ -94,7 +94,7 @@ function loadSkillDir(
 ): SkillEntry | null {
   const skillMdPath = path.join(dir, SKILL_MD);
   const misnamed = findMisnamed(dir);
-  const exists = existsSync(skillMdPath);
+  const exists = hasExactSkillMd(dir);
   if (!exists && misnamed.length === 0 && kind === 'flat') return null;
 
   const base: SkillEntry = {
@@ -129,6 +129,15 @@ function loadSkillDir(
     };
   }
   return base;
+}
+
+/**
+ * True only when the directory contains a file named exactly `SKILL.md`.
+ * existsSync would also match `skill.md` on case-insensitive filesystems
+ * (macOS, Windows), silently defeating SF001's misnamed-file detection.
+ */
+function hasExactSkillMd(dir: string): boolean {
+  return listFiles(dir).includes(SKILL_MD);
 }
 
 function findMisnamed(dir: string): string[] {
