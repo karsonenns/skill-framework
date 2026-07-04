@@ -1,0 +1,30 @@
+name: 'Skill Framework Lint'
+description: >-
+  Lint a tree of AI agent skills (SKILL.md) with sf lint. Findings surface as
+  PR annotations; the job fails on any error-severity finding.
+branding:
+  icon: 'check-square'
+  color: 'purple'
+inputs:
+  path:
+    description: 'Directory to lint (a skillfw project root or any directory of skills).'
+    required: false
+    default: '.'
+  version:
+    description: 'skillfw version to run (npm dist-tag or exact version).'
+    required: false
+    default: 'latest'
+  node-version:
+    description: 'Node.js version to set up.'
+    required: false
+    default: '20'
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+    - name: Run sf lint
+      shell: bash
+      run: npx -y "skillfw@${{ inputs.version }}" lint "${{ inputs.path }}" --format github

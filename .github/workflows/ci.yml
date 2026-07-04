@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [20, 22]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: sf lint examples/acme-saas
+        run: node packages/cli/bin/sf.js lint examples/acme-saas
+
+      - name: sf lint both archetypes
+        run: |
+          node packages/cli/bin/sf.js lint archetypes/saas
+          node packages/cli/bin/sf.js lint archetypes/solo
+
+      - name: scaffold both archetypes and lint the result
+        shell: bash
+        run: |
+          for archetype in saas solo; do
+            dir="$(mktemp -d)"
+            node packages/cli/bin/sf.js init "--$archetype" "$dir"
+            node packages/cli/bin/sf.js lint "$dir"
+            rm -rf "$dir"
+          done
+
+      - name: pack tarball sanity check
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 22
+        run: |
+          cd packages/cli
+          npm pack --dry-run

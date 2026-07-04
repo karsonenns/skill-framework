@@ -291,6 +291,21 @@ describe('SF014 executable scripts', () => {
   });
 });
 
+describe('--fix name casing', () => {
+  it('rewrites frontmatter name when lowercasing matches the folder', () => {
+    const dir = project(
+      baseProject({
+        'skills/domains/billing/tax-report/SKILL.md': skillMd('Tax_Report'),
+      }),
+    );
+    const result = lintPath(dir);
+    expect(result.findings.some((f) => f.ruleId === 'SF004')).toBe(true);
+    const applied = applySafeFixes(result, result.tree);
+    expect(applied.some((a) => a.includes('tax-report'))).toBe(true);
+    expect(lintPath(dir).findings.filter((f) => f.ruleId === 'SF004')).toEqual([]);
+  });
+});
+
 describe('SF015 unknown fields (opt-in)', () => {
   it('is off by default', () => {
     const dir = project(
@@ -334,6 +349,17 @@ describe('output formats', () => {
     expect(out.warnCount).toBeGreaterThanOrEqual(1);
     expect(out.findings[0]).toHaveProperty('ruleId');
     expect(out.findings[0]).toHaveProperty('file');
+  });
+  it('renders pretty output with rule ids, fix hints, and a summary', () => {
+    const dir = project(
+      baseProject({ 'skills/domains/billing/short/SKILL.md': skillMd('short', { description: 'Nope' }) }),
+    );
+    const out = formatFindings(lintPath(dir), 'pretty');
+    expect(out).toContain('SF007');
+    expect(out).toContain('fix:');
+    expect(out).toMatch(/1 warning\(s\)/);
+    const clean = formatFindings(lintPath(project(baseProject())), 'pretty');
+    expect(clean).toContain('no problems');
   });
   it('emits GitHub annotations', () => {
     const dir = project(
