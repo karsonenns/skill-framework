@@ -1,4 +1,5 @@
-# Settings-as-code for the repo's About panel and security toggles.
+# Settings-as-code for the repo's About panel, security toggles, and
+# branch protection (required status checks before merge).
 #
 # The default GITHUB_TOKEN cannot administer repository settings, so this
 # workflow needs a fine-grained personal access token stored as the
@@ -67,6 +68,32 @@ jobs:
                   { owner, repo },
                 );
                 core.info('Enabled private vulnerability reporting.');
+              }
+
+              if (cfg.branch_protection) {
+                const bp = cfg.branch_protection;
+                await github.rest.repos.updateBranchProtection({
+                  owner,
+                  repo,
+                  branch: bp.branch,
+                  required_status_checks: bp.required_status_checks
+                    ? {
+                        strict: bp.required_status_checks.strict,
+                        contexts: bp.required_status_checks.contexts,
+                      }
+                    : null,
+                  enforce_admins: bp.enforce_admins ?? false,
+                  required_pull_request_reviews: bp.required_pull_request_reviews ?? null,
+                  restrictions: null,
+                  allow_force_pushes: bp.allow_force_pushes ?? false,
+                  allow_deletions: bp.allow_deletions ?? false,
+                });
+                const contexts = bp.required_status_checks?.contexts ?? [];
+                core.info(
+                  `Protected ${bp.branch}: required checks [${contexts.join(', ')}]` +
+                  (bp.required_status_checks?.strict ? ' (branch must be up to date)' : '') +
+                  (bp.enforce_admins ? ', enforced for admins' : ''),
+                );
               }
               core.notice('Repository settings applied from .github/repo-settings.json');
             } catch (err) {
